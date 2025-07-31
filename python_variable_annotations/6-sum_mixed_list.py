@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Function that sums a mixed list of integers and floats, returns the total as a float."""
+"""Function that sums a mixed list of integers and floats """
 
 from typing import List, Union
 
