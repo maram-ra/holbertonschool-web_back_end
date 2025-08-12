@@ -4,13 +4,12 @@ Deletion-resilient hypermedia pagination
 """
 
 import csv
-import math  # noqa: F401
-from typing import Dict, List, Any
+import math
+from typing import Dict, List
 
 
 class Server:
-    """Server class to paginate a database of popular baby names.
-    """
+    """Server class to paginate a database of popular baby names."""
     DATA_FILE = "Popular_Baby_Names.csv"
 
     def __init__(self):
@@ -18,8 +17,7 @@ class Server:
         self.__indexed_dataset = None
 
     def dataset(self) -> List[List]:
-        """Cached dataset
-        """
+        """Cached dataset"""
         if self.__dataset is None:
             with open(self.DATA_FILE) as f:
                 reader = csv.reader(f)
@@ -29,8 +27,7 @@ class Server:
         return self.__dataset
 
     def indexed_dataset(self) -> Dict[int, List]:
-        """Dataset indexed by sorting position, starting at 0
-        """
+        """Dataset indexed by sorting position, starting at 0"""
         if self.__indexed_dataset is None:
             dataset = self.dataset()
             truncated_dataset = dataset[:1000]
@@ -41,41 +38,26 @@ class Server:
 
     def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
         """
-        Returns a deletion-resilient page of the dataset.
-
-        Args:
-            index (int): Starting index. Defaults to 0.
-            page_size (int): Number of items per page. Defaults to 10.
-
-        Returns:
-            Dict[str, Any]: page data including index,
-            next_index, page_size and data
+        Return a dictionary with deletion-resilient pagination information
         """
+        # Vérification que l'index est valide
+        indexed_data = self.indexed_dataset()
+        assert index is not None and 0 <= index < len(indexed_data)
 
-        # Set default index to 0 if None
-        if index is None:
-            index = 0
+        # Collecter les données à partir de l'index donné
+        data = []
+        current_index = index
+        collected = 0
 
-        # Get indexed dataset
-        dataset = self.indexed_dataset()
-        dataset_size = len(dataset)
+        # Parcourir le dataset indexé pour collecter page_size éléments
+        while collected < page_size and current_index < len(indexed_data):
+            if current_index in indexed_data:
+                data.append(indexed_data[current_index])
+                collected += 1
+            current_index += 1
 
-        # Assert index is in valid range
-        assert isinstance(index, int) and 0 <= index < dataset_size
-
-        data: List[List[Any]] = []
-        next_index = index
-
-        # Move forward until valid data is found if index is deleted
-        while dataset.get(next_index) is None:
-            next_index += 1
-
-        # Add valid items until reaching page_size
-        while len(data) < page_size:
-            item = dataset.get(next_index)
-            if item is not None:
-                data.append(item)
-            next_index += 1
+        # Calculer le prochain index
+        next_index = current_index
 
         return {
             'index': index,
