@@ -4,8 +4,8 @@ Deletion-resilient hypermedia pagination
 """
 
 import csv
-import math
-from typing import List, Dict
+import math  # noqa: F401
+from typing import Dict, List, Any
 
 
 class Server:
@@ -41,27 +41,46 @@ class Server:
 
     def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
         """
-        Return a page of the dataset starting at a specific index
-        with hypermedia pagination metadata.
+        Returns a deletion-resilient page of the dataset.
 
         Args:
-        index (int): The starting index of the dataset page (0-indexed).
-        page_size (int): The number of items to include in the page.
+            index (int): Starting index. Defaults to 0.
+            page_size (int): Number of items per page. Defaults to 10.
 
         Returns:
-        Dict: A dictionary containing:
-            - index (int): The current start index of the page.
-            - next_index (int): The starting index of the next page.
-            - page_size (int): The number of items requested for the page.
-            - data (List[List]): The list of dataset rows for the current page.
+            Dict[str, Any]: page data including index,
+            next_index, page_size and data
         """
-        assert 0 <= index
-        dataset = self.dataset()
-        data = dataset[index:index + page_size]
+
+        # Set default index to 0 if None
+        if index is None:
+            index = 0
+
+        # Get indexed dataset
+        dataset = self.indexed_dataset()
+        dataset_size = len(dataset)
+
+        # Assert index is in valid range
+        assert isinstance(index, int) and 0 <= index < dataset_size
+
+        data: List[List[Any]] = []
+        next_index = index
+
+        # Move forward until valid data is found if index is deleted
+        while dataset.get(next_index) is None:
+            next_index += 1
+
+        # Add valid items until reaching page_size
+        while len(data) < page_size:
+            item = dataset.get(next_index)
+            if item is not None:
+                data.append(item)
+            next_index += 1
+
         return {
-            "index": index,
-            "next_index": index + 1,
-            "page_size": page_size,
-            "data": data
+            'index': index,
+            'next_index': next_index,
+            'page_size': page_size,
+            'data': data
         }
     
